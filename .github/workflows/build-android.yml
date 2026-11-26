@@ -20,39 +20,36 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Decode keystore base64
-        run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > capacitor-release.keystore
+      - name: Decode keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > capacitor-release.keystore
 
-      - name: Expo prebuild generate android project
-        run: npx expo prebuild --platform android
-
-      - name: Inject release signing config
-        run: |
-          cat >> android/app/build.gradle <<'EOF'
-android {
-    signingConfigs {
-        release {
-            storeFile file("../../capacitor-release.keystore")
-            storePassword "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
-            keyAlias "${{ secrets.ANDROID_KEY_ALIAS }}"
-            keyPassword "${{ secrets.ANDROID_KEY_PASSWORD }}"
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled true
-        }
-    }
-}
-EOF
+      - name: Capacitor sync android
+        run: npx cap sync android
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: Write signing config
+        run: |
+          echo "android {" >> android/app/build.gradle
+          echo "    signingConfigs {" >> android/app/build.gradle
+          echo "        release {" >> android/app/build.gradle
+          echo "            storeFile file('../../capacitor-release.keystore')" >> android/app/build.gradle
+          echo "            storePassword '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'" >> android/app/build.gradle
+          echo "            keyAlias '${{ secrets.ANDROID_KEY_ALIAS }}'" >> android/app/build.gradle
+          echo "            keyPassword '${{ secrets.ANDROID_KEY_PASSWORD }}'" >> android/app/build.gradle
+          echo "        }" >> android/app/build.gradle
+          echo "    }" >> android/app/build.gradle
+          echo "    buildTypes {" >> android/app/build.gradle
+          echo "        release {" >> android/app/build.gradle
+          echo "            signingConfig signingConfigs.release" >> android/app/build.gradle
+          echo "            minifyEnabled true" >> android/app/build.gradle
+          echo "        }" >> android/app/build.gradle
+          echo "    }" >> android/app/build.gradle
+          echo "}" >> android/app/build.gradle
 
       - name: Build release APK
         run: cd android && ./gradlew assembleRelease
